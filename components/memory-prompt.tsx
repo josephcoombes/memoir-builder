@@ -4,17 +4,18 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Sparkles, RefreshCw, ArrowLeft, AlertCircle } from "lucide-react"
-import type { UserIntent, Memory } from "@/app/page"
-import { generateMemoryDraft } from "@/lib/ai-actions"
+import { ArrowRight, RefreshCw, ArrowLeft, Heart, Edit3 } from "lucide-react"
+import type { Memory } from "@/app/page"
+
 import TapestryLogo from "@/components/tapestry-logo"
 
 interface MemoryPromptProps {
-  userIntent: UserIntent
   onMemoryAdded: (memory: Memory) => void
   onViewHub: () => void
   memoriesCount: number
+  existingMemories: Memory[]
 }
 
 const memoryPromptsByCategory = {
@@ -34,9 +35,14 @@ const memoryPromptsByCategory = {
     "What was your favorite book or story?",
     "Describe a childhood friend you'll never forget.",
     "What's a food that reminds you of being young?",
+    "What's a place from your childhood that no longer exists?",
+    "Tell me about a birthday you remember vividly.",
+    "What was your favorite outfit or costume as a kid?",
+    "Describe a time you felt really brave as a child.",
+    "What did you want to be when you grew up—and why?",
   ],
   family: [
-    "Tell me about your grandmother's hands.",
+    "What was your relationship like with your siblings growing up?",
     "What's a family story that gets told over and over?",
     "Describe a typical family dinner.",
     "What's something your parent always said?",
@@ -51,6 +57,11 @@ const memoryPromptsByCategory = {
     "Tell me about a time your family came together during difficulty.",
     "What's something your family did differently from others?",
     "Describe a relative who influenced you.",
+    "Tell me about a moment when you felt especially proud of a family member.",
+    "Describe a family tradition that has changed—or stayed the same—over time.",
+    "What's a story you've heard about your grandparents or great-grandparents?",
+    "How did your family handle conflict or disagreements?",
+    "What's a smell, sound, or object that instantly reminds you of home?",
   ],
   love: [
     "Tell me about your first crush.",
@@ -68,6 +79,11 @@ const memoryPromptsByCategory = {
     "Tell me about a love that didn't work out but taught you something.",
     "What's a way someone showed they cared without words?",
     "Describe a moment when you felt completely understood.",
+    "What's a place that holds memories of love for you?",
+    "Tell me about a time you made a grand gesture for someone.",
+    "What's a small, everyday moment that felt full of love?",
+    "Describe the feeling of falling out of love.",
+    "What's something you once believed about love that changed over time?",
   ],
   growth: [
     "Tell me about a time you surprised yourself.",
@@ -85,6 +101,11 @@ const memoryPromptsByCategory = {
     "Tell me about a time you chose the harder path.",
     "What's a habit you changed that made a difference?",
     "Describe a moment when you realized your own strength.",
+    "What's a book, movie, or experience that shifted how you see the world?",
+    "Tell me about a time you stepped out of your comfort zone.",
+    "What's something you used to avoid but now embrace?",
+    "Describe a time you let go of something—or someone—you'd outgrown.",
+    "What's a belief or value you grew into over time?",
   ],
   challenges: [
     "Tell me about a time you felt completely lost.",
@@ -102,6 +123,11 @@ const memoryPromptsByCategory = {
     "Tell me about a time when your world changed overnight.",
     "What's a burden you've carried that others don't know about?",
     "Describe a moment when you had to be stronger than you felt.",
+    "Tell me about a time you had to ask for help.",
+    "What's something you never thought you'd get through—but did?",
+    "Describe a setback that changed your direction.",
+    "What's a time when you felt torn between two paths?",
+    "Tell me about a moment when you questioned everything.",
   ],
   achievements: [
     "Tell me about a moment when you felt truly proud.",
@@ -119,6 +145,11 @@ const memoryPromptsByCategory = {
     "Tell me about a time you were a leader.",
     "What's a personal record or milestone you reached?",
     "Describe a moment when you realized you'd made a difference.",
+    "What's a lesson you learned from a failure?",
+    "Tell me about a time you stepped up for someone.",
+    "What's a moment when you felt like you were on top of the world?",
+    "Describe a time when you overcame a personal obstacle.",
+    "What's a belief or value you hold dear?",
   ],
   loss: [
     "Tell me about saying goodbye to someone important.",
@@ -136,6 +167,11 @@ const memoryPromptsByCategory = {
     "Tell me about a time when 'normal' changed forever.",
     "What's something you took for granted until it was gone?",
     "Describe a moment when you had to say goodbye to who you used to be.",
+    "What's a way you've honored someone who's no longer here?",
+    "Tell me about a time when you felt like you were losing someone.",
+    "What's a memory that's hard to forget?",
+    "Describe a moment when you felt like you were losing yourself.",
+    "What's a way you've grieved for someone who's no longer here?",
   ],
   joy: [
     "Tell me about a moment of pure happiness.",
@@ -153,6 +189,11 @@ const memoryPromptsByCategory = {
     "Tell me about a time you felt grateful beyond words.",
     "What's a sound that makes you happy?",
     "Describe a moment when you felt truly alive.",
+    "What's a way you've found joy in the midst of difficulty?",
+    "Tell me about a time when you felt like you were on top of the world.",
+    "What's a memory that brings you joy every time you think about it?",
+    "Describe a moment when you felt like you were truly in the moment.",
+    "What's a way you've found joy in the midst of difficulty?",
   ],
   lessons: [
     "What's something you learned too late?",
@@ -170,6 +211,26 @@ const memoryPromptsByCategory = {
     "What's something you learned about life from an unexpected source?",
     "Tell me about a time when you learned the value of patience.",
     "What's a truth you discovered that others might not understand?",
+    "Tell me about a time when you learned the value of patience.",
+    "What's a lesson you learned from watching others?",
+    "Describe a moment when you changed your mind about something important.",
+    "What's something you learned about life from an unexpected source?",
+    "Tell me about a time when you learned the value of patience.",
+    "What's a truth you discovered that others might not understand?",
+    "Tell me about a time when you learned the value of patience.",
+  ],
+  hope: [
+    "Tell me about a time when you felt like you had nothing left.",
+    "What's a moment when you felt like you were on top of the world.",
+    "Describe a time when you felt like you were truly in the moment.",
+    "What's a way you've found joy in the midst of difficulty?",
+    "Tell me about a time when you learned the value of patience.",
+    "What's a truth you discovered that others might not understand?",
+    "Tell me about a time when you learned the value of patience.",
+    "What's a lesson you learned from watching others?",
+    "Describe a moment when you changed your mind about something important.",
+    "What's something you learned about life from an unexpected source?",
+    "Tell me about a time when you learned the value of patience.",
   ],
 }
 
@@ -183,6 +244,7 @@ const categoryOptions = [
   { value: "loss", label: "Loss & Grief" },
   { value: "joy", label: "Joy & Happiness" },
   { value: "lessons", label: "Life Lessons" },
+  { value: "hope", label: "Hope" },
 ]
 
 const emotionOptions = [
@@ -208,15 +270,9 @@ const emotionOptions = [
   { value: "peace", label: "Peace", emoji: "☮️" },
 ]
 
-const toneOptions = [
-  { id: "warm", label: "Warm", description: "Gentle and comforting" },
-  { id: "honest", label: "Honest", description: "Direct and authentic" },
-  { id: "poetic", label: "Poetic", description: "Lyrical and beautiful" },
-  { id: "humorous", label: "Humorous", description: "Light and playful" },
-  { id: "raw", label: "Raw", description: "Unfiltered and real" },
-]
 
-export default function MemoryPrompt({ userIntent, onMemoryAdded, onViewHub, memoriesCount }: MemoryPromptProps) {
+
+export default function MemoryPrompt({ onMemoryAdded, onViewHub, memoriesCount, existingMemories }: MemoryPromptProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [showCustomPrompt, setShowCustomPrompt] = useState(false)
   const [customPrompt, setCustomPrompt] = useState("")
@@ -225,26 +281,67 @@ export default function MemoryPrompt({ userIntent, onMemoryAdded, onViewHub, mem
   const [response, setResponse] = useState("")
   const [followUps, setFollowUps] = useState<string[]>([])
   const [followUpResponses, setFollowUpResponses] = useState<string[]>([])
-  const [showToneSelection, setShowToneSelection] = useState(false)
-  const [selectedTone, setSelectedTone] = useState<string | null>(null)
-  const [aiDraft, setAiDraft] = useState<string | null>(null)
-  const [reflection, setReflection] = useState("")
+
+  const [showDetailsSection, setShowDetailsSection] = useState(false)
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([])
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [apiKeyMissing, setApiKeyMissing] = useState(false)
+  const [selectedPeople, setSelectedPeople] = useState<string[]>([])
+  const [newPersonName, setNewPersonName] = useState<string>("")
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [newTagName, setNewTagName] = useState<string>("")
+  const [memoryDate, setMemoryDate] = useState<string>("")
+  const [memorySaved, setMemorySaved] = useState(false)
+  const [savedMemoryTitle, setSavedMemoryTitle] = useState("")
+
+  // Extract previously used people and tags from existing memories
+  const previouslyUsedPeople = Array.from(new Set(
+    existingMemories.flatMap(memory => memory.people || [])
+  )).sort()
+
+  const previouslyUsedTags = Array.from(new Set(
+    existingMemories.flatMap(memory => memory.tags || [])
+  )).sort()
 
   const generateFollowUps = () => {
-    const followUpQuestions = [
-      "Who was with you during this memory?",
-      "What happened next?",
-      "How did this make you feel?",
+    // Generate contextual follow-ups based on the prompt and response
+    const contextualQuestions = []
+    
+    // Add questions based on the type of memory/prompt
+    if (currentPrompt.toLowerCase().includes('first time') || currentPrompt.toLowerCase().includes('first')) {
+      contextualQuestions.push("What expectations did you have beforehand?")
+      contextualQuestions.push("How did the reality compare to what you imagined?")
+    }
+    
+    if (currentPrompt.toLowerCase().includes('challenging') || currentPrompt.toLowerCase().includes('difficult')) {
+      contextualQuestions.push("What helped you get through this?")
+      contextualQuestions.push("What would you tell someone facing a similar challenge?")
+    }
+    
+    if (currentPrompt.toLowerCase().includes('person') || currentPrompt.toLowerCase().includes('someone')) {
+      contextualQuestions.push("What did this person teach you?")
+      contextualQuestions.push("How did they influence your life?")
+    }
+    
+    if (currentPrompt.toLowerCase().includes('childhood') || currentPrompt.toLowerCase().includes('young')) {
+      contextualQuestions.push("How do you see this differently as an adult?")
+      contextualQuestions.push("What would you tell your younger self?")
+    }
+    
+    // Universal follow-ups that work for most memories
+    const universalQuestions = [
       "What details do you remember most clearly?",
+      "Who else was involved in this memory?",
+      "What happened next?",
       "Why do you think this memory stayed with you?",
+      "How did this experience change you?",
+      "What emotions do you feel when thinking about this?",
+      "What would you want others to learn from this story?",
     ]
-
-    const randomFollowUps = followUpQuestions.sort(() => 0.5 - Math.random()).slice(0, 2)
-
-    setFollowUps(randomFollowUps)
+    
+    // Combine contextual and universal, remove duplicates, shuffle, and take 2
+    const allQuestions = [...new Set([...contextualQuestions, ...universalQuestions])]
+    const selectedFollowUps = allQuestions.sort(() => 0.5 - Math.random()).slice(0, 2)
+    
+    setFollowUps(selectedFollowUps)
   }
 
   const handleResponseSubmit = () => {
@@ -259,60 +356,60 @@ export default function MemoryPrompt({ userIntent, onMemoryAdded, onViewHub, mem
     setFollowUpResponses(newResponses)
   }
 
-  const handleContinueToTone = () => {
-    setShowToneSelection(true)
-  }
-
-  const handleToneSelect = async (tone: string) => {
-    setSelectedTone(tone)
-    setIsGenerating(true)
-    setApiKeyMissing(false)
-
-    try {
-      const fullResponse = [response, ...followUpResponses.filter((r) => r.trim())].join(" ")
-      const draft = await generateMemoryDraft(currentPrompt, fullResponse, tone)
-      setAiDraft(draft)
-    } catch (error) {
-      console.error("Error generating draft:", error)
-      if (error instanceof Error && error.message && error.message.includes("API key")) {
-        setApiKeyMissing(true)
-      }
-      // Still set a fallback draft so user can continue
-      setAiDraft(`This memory holds a special place in my heart. ${[response, ...followUpResponses.filter((r) => r.trim())].join(" ")} 
-
-Looking back on this experience, I can see how it shaped who I am today. Every memory is a thread in the tapestry of our lives, and this one is woven deeply into mine.`)
-    } finally {
-      setIsGenerating(false)
-    }
+  const handleContinueToDetails = () => {
+    setShowDetailsSection(true)
   }
 
   const handleSaveMemory = () => {
+    const filteredFollowUpResponses = followUpResponses.filter((r) => r.trim())
+    const additionalThoughts = followUpResponses[followUps.length] 
+      ? followUpResponses[followUps.length].trim() 
+      : undefined
+
+    // Store follow-up questions that have responses
+    const questionsWithResponses = followUps.filter((_, index) => followUpResponses[index]?.trim())
+
     const memory: Memory = {
       id: Date.now().toString(),
       prompt: currentPrompt,
-      response: [response, ...followUpResponses.filter((r) => r.trim())].join(" "),
-      aiDraft: aiDraft || undefined,
-      reflection: reflection || undefined,
-      tone: selectedTone || undefined,
-      tags: [],
+      response: response,
+      followUpQuestions: questionsWithResponses.length > 0 ? questionsWithResponses : undefined,
+      followUpResponses: filteredFollowUpResponses.slice(0, followUps.length), // Only the structured follow-ups
+      additionalThoughts: additionalThoughts || undefined,
+      tags: selectedTags,
       emotions: selectedEmotions,
+      people: selectedPeople,
       timestamp: new Date(),
+      memoryDate: memoryDate ? new Date(memoryDate) : undefined,
+      category: selectedCategory || undefined,
     }
 
     onMemoryAdded(memory)
 
-    // Reset for next memory
+    // Show success state instead of immediately resetting
+    setSavedMemoryTitle(currentPrompt.length > 60 ? currentPrompt.substring(0, 60) + "..." : currentPrompt)
+    setMemorySaved(true)
+  }
+
+  const startNewMemory = () => {
+    // Reset all state for a new memory
     setResponse("")
     setFollowUps([])
     setFollowUpResponses([])
-    setShowToneSelection(false)
-    setSelectedTone(null)
-    setAiDraft(null)
-    setReflection("")
+    setShowDetailsSection(false)
     setSelectedEmotions([])
+    setSelectedPeople([])
+    setNewPersonName("")
+    setSelectedTags([])
+    setNewTagName("")
+    setMemoryDate("")
     setShowCategorySelection(true)
     setSelectedCategory(null)
     setCurrentPrompt("")
+    setMemorySaved(false)
+    setSavedMemoryTitle("")
+    setShowCustomPrompt(false)
+    setCustomPrompt("")
   }
 
   const getNewPrompt = (category?: string) => {
@@ -349,34 +446,75 @@ Looking back on this experience, I can see how it shaped who I am today. Every m
     setResponse("")
     setFollowUps([])
     setFollowUpResponses([])
-    setShowToneSelection(false)
-    setSelectedTone(null)
-    setAiDraft(null)
-    setReflection("")
   }
 
   return (
-    <div className="min-h-screen bg-warm-cream p-4">
+    <div className="bg-warm-cream p-4" style={{ minHeight: 'calc(100vh - 64px)' }}>
       <div className="max-w-2xl mx-auto pt-8">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-heading font-semibold text-black">Memory Excavation</h1>
             {memoriesCount > 0 && (
-              <p className="text-black font-body">{memoriesCount} memories woven into your tapestry</p>
+              <p className="text-black font-body">{memoriesCount} memories in your Keepsake.</p>
             )}
           </div>
           {memoriesCount > 0 && (
             <Button
               variant="outline"
               onClick={onViewHub}
-              className="bg-terracotta hover:bg-terracotta-dark text-white border-terracotta"
+              className="bg-terracotta hover:bg-terracotta-dark hover:text-white text-white border-terracotta"
             >
-              View Memory Hub
+              View Keepsake
             </Button>
           )}
         </div>
 
-        {showCategorySelection ? (
+        {memorySaved ? (
+          <Card className="mb-6 border-warm-taupe bg-warm-paper shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg font-heading text-black flex items-center">
+                ✅ Memory Successfully Saved!
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-terracotta/10 p-3 rounded-lg border border-terracotta/20">
+                <p className="text-black font-body font-medium">"{savedMemoryTitle}"</p>
+              </div>
+              <p className="text-black font-body">
+                Your memory has been added to your Keepsake. What would you like to do next?
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={onViewHub}
+                  className="bg-terracotta hover:bg-terracotta-dark text-white"
+                >
+                  <Heart className="mr-2 h-4 w-4" />
+                  View Keepsake
+                </Button>
+                <Button
+                  onClick={startNewMemory}
+                  variant="outline"
+                  className="bg-warm-paper hover:bg-terracotta-pale text-black border-warm-taupe"
+                >
+                  ➕ Create Another Memory
+                </Button>
+                <Button
+                  onClick={() => {
+                    setMemorySaved(false)
+                    setShowDetailsSection(true)
+                  }}
+                  variant="ghost"
+                  className="text-black hover:bg-terracotta-pale hover:text-black"
+                >
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  Edit Memory
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {showCategorySelection && (
           <div className="space-y-6">
             <Card className="border-warm-taupe bg-white shadow-sm">
               <CardHeader>
@@ -415,7 +553,7 @@ Looking back on this experience, I can see how it shaped who I am today. Every m
                   <Button
                     onClick={() => setShowCustomPrompt(true)}
                     variant="outline"
-                    className="bg-terracotta hover:bg-terracotta-dark text-white border-terracotta"
+                    className="bg-terracotta hover:bg-terracotta-dark hover:text-white text-white border-terracotta"
                   >
                     Write a Custom Prompt
                   </Button>
@@ -441,7 +579,7 @@ Looking back on this experience, I can see how it shaped who I am today. Every m
                           setShowCustomPrompt(false)
                           setCustomPrompt("")
                         }}
-                        className="bg-terracotta hover:bg-terracotta-dark text-white border-terracotta"
+                        className="bg-terracotta/10 hover:bg-terracotta/50 text-black border-terracotta"
                       >
                         Cancel
                       </Button>
@@ -451,7 +589,9 @@ Looking back on this experience, I can see how it shaped who I am today. Every m
               </CardContent>
             </Card>
           </div>
-        ) : (
+        )}
+
+        {!showCategorySelection && !memorySaved && (
           <Card className="mb-6 border-warm-taupe bg-white shadow-sm">
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -511,7 +651,7 @@ Looking back on this experience, I can see how it shaped who I am today. Every m
                 <div key={index} className="space-y-2">
                   <p className="text-black font-body">{followUp}</p>
                   <Textarea
-                    placeholder="If you're stuck, try this... or skip if it doesn't resonate"
+                    placeholder="Add in your thoughts, or skip this if it doesn't resonate..."
                     value={followUpResponses[index] || ""}
                     onChange={(e) => handleFollowUpResponse(index, e.target.value)}
                     className="min-h-20 bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
@@ -519,89 +659,44 @@ Looking back on this experience, I can see how it shaped who I am today. Every m
                 </div>
               ))}
 
-              <Button onClick={handleContinueToTone} className="mt-4 bg-terracotta hover:bg-terracotta-dark text-white">
-                Turn into a story
-                <Sparkles className="ml-2 h-4 w-4" />
+              {/* Additional thoughts section */}
+              <div className="border-t border-warm-taupe pt-4 mt-4">
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-black font-body">
+                    Any other details, feelings, or thoughts you'd like to capture?
+                  </label>
+                  <Textarea
+                    placeholder="Share anything else about this memory... sounds, smells, conversations, how it changed you, what you learned, whatever feels right."
+                    value={followUpResponses[followUps.length] || ""}
+                    onChange={(e) => handleFollowUpResponse(followUps.length, e.target.value)}
+                    className="min-h-20 bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
+                  />
+                </div>
+              </div>
+
+              <Button onClick={handleContinueToDetails} className="mt-4 bg-terracotta hover:bg-terracotta-dark text-white">
+                Add Details & Save
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
         )}
 
-        {showToneSelection && !selectedTone && (
+        {showDetailsSection && !memorySaved && (
           <Card className="mb-6 border-warm-taupe bg-white shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg font-heading text-black">Choose your voice</CardTitle>
-              <p className="text-black font-body">How would you like this memory to be written?</p>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3">
-                {toneOptions.map((tone) => (
-                  <Button
-                    key={tone.id}
-                    variant="outline"
-                    onClick={() => handleToneSelect(tone.id)}
-                    className="justify-start h-auto p-4 bg-terracotta hover:bg-terracotta-dark text-white border-terracotta"
-                  >
-                    <div className="text-left">
-                      <div className="font-medium font-body text-white">{tone.label}</div>
-                      <div className="text-sm font-body text-white">{tone.description}</div>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {isGenerating && (
-          <Card className="mb-6 border-warm-taupe bg-white shadow-sm">
-            <CardContent className="p-6 text-center">
-              <Sparkles className="h-8 w-8 animate-spin mx-auto mb-4 text-terracotta-dark" />
-              <p className="text-black font-body">Crafting your memory into a story...</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {apiKeyMissing && (
-          <Card className="mb-6 border-orange-200 bg-orange-50">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-orange-900 mb-1">AI Features Unavailable</h4>
-                  <p className="text-sm text-orange-800 mb-2">
-                    To use AI-powered memory drafts, you'll need to add your OpenAI API key to the .env.local file.
-                  </p>
-                  <p className="text-xs text-orange-700">
-                    Don't worry - you can still save your memory and add AI drafts later!
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {aiDraft && (
-          <Card className="mb-6 border-warm-taupe bg-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-heading text-black">Your Memory Story</CardTitle>
-              <Badge variant="secondary" className="bg-sage/20 text-black border-sage/30">
-                {selectedTone} tone
-              </Badge>
+              <CardTitle className="text-lg font-heading text-black">Add Details</CardTitle>
+              <p className="text-black font-body">Help organize and enrich this memory</p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-warm-paper p-4 rounded-lg border border-warm-taupe">
-                <p className="whitespace-pre-wrap text-black font-body leading-relaxed">{aiDraft}</p>
-              </div>
-
               <div className="space-y-2">
-                <label className="text-sm font-medium text-black font-body">Add a reflection (optional)</label>
-                <p className="text-xs text-black font-body">What did you learn from this time in your life?</p>
-                <Textarea
-                  placeholder="What I wish I'd known then..."
-                  value={reflection}
-                  onChange={(e) => setReflection(e.target.value)}
-                  className="min-h-20 bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
+                <label className="text-sm font-medium text-black font-body">When did this happen? (optional)</label>
+                <p className="text-xs text-black font-body">Help organize your memories chronologically</p>
+                <Input
+                  type="date"
+                  value={memoryDate}
+                  onChange={(e) => setMemoryDate(e.target.value)}
+                  className="bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
                 />
               </div>
 
@@ -621,14 +716,194 @@ Looking back on this experience, I can see how it shaped who I am today. Every m
                       }}
                       className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-body transition-all ${
                         selectedEmotions.includes(emotion.value)
-                          ? 'bg-terracotta-pale text-black border-2 border-terracotta shadow-sm'
-                          : 'bg-stone-100 hover:bg-stone-200 text-black border-2 border-transparent'
+                          ? 'bg-stone-100 text-black border-2 border-terracotta opacity-100'
+                          : 'bg-stone-100 hover:bg-stone-200 text-black border-2 border-transparent opacity-60 hover:opacity-80'
                       }`}
                     >
                       <span className="text-sm">{emotion.emoji}</span>
                       <span>{emotion.label}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-black font-body">Who was involved in this memory? (optional)</label>
+                <div className="space-y-2">
+                  {selectedPeople.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedPeople.map((person, index) => (
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="gap-1 border-warm-taupe text-black hover:bg-terracotta-pale"
+                        >
+                          👤 {person}
+                          <button 
+                            onClick={() => {
+                              setSelectedPeople(prev => prev.filter(p => p !== person))
+                            }}
+                            className="ml-1 hover:text-red-500"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Previously used people */}
+                  {previouslyUsedPeople.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-black font-body">Previously added people:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {previouslyUsedPeople.map((person) => (
+                          <button
+                            key={person}
+                            type="button"
+                            onClick={() => {
+                              if (!selectedPeople.includes(person)) {
+                                setSelectedPeople(prev => [...prev, person])
+                              }
+                            }}
+                            disabled={selectedPeople.includes(person)}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-body transition-all ${
+                              selectedPeople.includes(person)
+                                ? 'bg-stone-100 text-black border-2 border-terracotta opacity-100'
+                                : 'bg-stone-100 hover:bg-stone-200 text-black border-2 border-transparent opacity-60 hover:opacity-80'
+                            }`}
+                          >
+                            <span>👤</span>
+                            <span>{person}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add a person..."
+                      value={newPersonName}
+                      onChange={(e) => setNewPersonName(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const name = newPersonName.trim()
+                          if (name && !selectedPeople.includes(name)) {
+                            setSelectedPeople(prev => [...prev, name])
+                            setNewPersonName("")
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const name = newPersonName.trim()
+                        if (name && !selectedPeople.includes(name)) {
+                          setSelectedPeople(prev => [...prev, name])
+                          setNewPersonName("")
+                        }
+                      }}
+                      disabled={!newPersonName.trim()}
+                      className="bg-terracotta hover:bg-terracotta-dark text-white border-terracotta"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-black font-body">Add tags to organize this memory (optional)</label>
+                <div className="space-y-2">
+                  {selectedTags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTags.map((tag, index) => (
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="gap-1 border-warm-taupe text-black hover:bg-terracotta-pale"
+                        >
+                          🏷️ {tag}
+                          <button 
+                            onClick={() => {
+                              setSelectedTags(prev => prev.filter(t => t !== tag))
+                            }}
+                            className="ml-1 hover:text-red-500"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Previously used tags */}
+                  {previouslyUsedTags.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-black font-body">Previously used tags:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {previouslyUsedTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => {
+                              if (!selectedTags.includes(tag)) {
+                                setSelectedTags(prev => [...prev, tag])
+                              }
+                            }}
+                            disabled={selectedTags.includes(tag)}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-body transition-all ${
+                              selectedTags.includes(tag)
+                                ? 'bg-stone-100 text-black border-2 border-terracotta opacity-100'
+                                : 'bg-stone-100 hover:bg-stone-200 text-black border-2 border-transparent opacity-60 hover:opacity-80'
+                            }`}
+                          >
+                            <span>🏷️</span>
+                            <span>{tag}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add a tag..."
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const tag = newTagName.trim()
+                          if (tag && !selectedTags.includes(tag)) {
+                            setSelectedTags(prev => [...prev, tag])
+                            setNewTagName("")
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const tag = newTagName.trim()
+                        if (tag && !selectedTags.includes(tag)) {
+                          setSelectedTags(prev => [...prev, tag])
+                          setNewTagName("")
+                        }
+                      }}
+                      disabled={!newTagName.trim()}
+                      className="bg-terracotta hover:bg-terracotta-dark text-white border-terracotta"
+                    >
+                      Add
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -639,11 +914,13 @@ Looking back on this experience, I can see how it shaped who I am today. Every m
           </Card>
         )}
 
-        {memoriesCount > 0 && (
-          <div className="text-center py-8">
-            <p className="text-black mb-4 font-body">Each memory is just one thread in the story of your life.</p>
-            <TapestryLogo size={32} className="mx-auto opacity-60" />
-          </div>
+            {memoriesCount > 0 && (
+              <div className="text-center py-8">
+                <p className="text-black mb-4 font-body">Keepsake turns everyday moments into lasting memories.</p>
+                <TapestryLogo size={32} className="mx-auto opacity-60" />
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -92,9 +92,8 @@
     @apply bg-input border-stone-400 focus:border-primary focus:ring-primary/20 text-black;
   }
 
-  /* Button overrides - all buttons should be terracotta with white text */
-  .btn-primary,
-  button:not(.btn-outline):not(.btn-ghost) {
+  /* Button overrides - only apply to specific button classes */
+  .btn-primary {
     @apply bg-terracotta text-white hover:bg-terracotta-dark;
   }
 }
@@ -143,7 +142,7 @@
     background-color: rgb(146 64 14) !important; /* amber-800 */
   }
   .bg-terracotta-dark {
-    background-color: rgb(120 53 15) !important; /* amber-900 */
+    background-color: rgb(102, 45, 11) !important; /* amber-900 */
   }
   .bg-terracotta-light {
     background-color: rgb(217 119 6) !important; /* amber-600 */

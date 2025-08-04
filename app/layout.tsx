@@ -19,9 +19,9 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Tapestry - Your Story Matters",
-  description: "Your life. Woven together. Build your personal memoir one memory at a time.",
-    generator: 'v0.dev'
+  title: "Keepsake - Your Personal Archive",
+  description: "Remember what shaped you, one memory at a time. Your personal memory journal and archive.",
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({

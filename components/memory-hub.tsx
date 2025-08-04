@@ -1,21 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Calendar, Tag, Edit3, Save, X, BookOpen, Filter } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Plus, Calendar, Edit3, Save, X, Filter, Trash2 } from "lucide-react"
 import type { Memory } from "@/app/page"
 
 interface MemoryHubProps {
   memories: Memory[]
   onAddAnother: () => void
   setMemories: (memories: Memory[]) => void
-  onViewChapters: () => void
-  hasChapters: boolean
 }
 
 const categoryOptions = [
@@ -57,15 +56,20 @@ export default function MemoryHub({
   memories,
   onAddAnother,
   setMemories,
-  onViewChapters,
-  hasChapters,
 }: MemoryHubProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingMemory, setEditingMemory] = useState<Memory | null>(null)
   const [newTag, setNewTag] = useState("")
+  const [newPerson, setNewPerson] = useState("")
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [memoryToDelete, setMemoryToDelete] = useState<string | null>(null)
   const [filterCategory, setFilterCategory] = useState<string>("all")
   const [filterTag, setFilterTag] = useState<string>("")
   const [filterEmotion, setFilterEmotion] = useState<string>("all")
+  const [filterPerson, setFilterPerson] = useState<string>("all")
+  const [sortBy, setSortBy] = useState<string>("newest")
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10)
 
   const handleEdit = (memory: Memory) => {
     setEditingId(memory.id)
@@ -94,6 +98,40 @@ export default function MemoryHub({
         })
       }
       setNewTag("")
+    }
+  }
+
+  const addPerson = (memoryId: string) => {
+    if (newPerson.trim()) {
+      if (editingMemory && editingMemory.id === memoryId) {
+        const currentPeople = editingMemory.people || []
+        if (!currentPeople.includes(newPerson.trim())) {
+          setEditingMemory({
+            ...editingMemory,
+            people: [...currentPeople, newPerson.trim()],
+          })
+        }
+      }
+      setNewPerson("")
+    }
+  }
+
+  const handleDeleteMemory = (memoryId: string) => {
+    setMemoryToDelete(memoryId)
+    setDeleteConfirmOpen(true)
+  }
+
+  const confirmDeleteMemory = () => {
+    if (memoryToDelete) {
+      const updatedMemories = memories.filter(m => m.id !== memoryToDelete)
+      setMemories(updatedMemories)
+      setMemoryToDelete(null)
+      setDeleteConfirmOpen(false)
+      // If we were editing the deleted memory, cancel edit mode
+      if (editingId === memoryToDelete) {
+        setEditingId(null)
+        setEditingMemory(null)
+      }
     }
   }
 
@@ -129,11 +167,35 @@ export default function MemoryHub({
     const categoryMatch = filterCategory === "all" || memory.category === filterCategory
     const tagMatch = !filterTag || memory.tags.some((tag) => tag.toLowerCase().includes(filterTag.toLowerCase()))
     const emotionMatch = filterEmotion === "all" || (memory.emotions && memory.emotions.includes(filterEmotion))
-    return categoryMatch && tagMatch && emotionMatch
+    const personMatch = filterPerson === "all" || (memory.people && memory.people.includes(filterPerson))
+    return categoryMatch && tagMatch && emotionMatch && personMatch
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case "oldest":
+        return (a.memoryDate || a.timestamp).getTime() - (b.memoryDate || b.timestamp).getTime()
+      case "newest":
+        return (b.memoryDate || b.timestamp).getTime() - (a.memoryDate || a.timestamp).getTime()
+      case "chronological":
+        return (a.memoryDate || a.timestamp).getTime() - (b.memoryDate || b.timestamp).getTime()
+      default:
+        return (b.timestamp).getTime() - (a.timestamp).getTime()
+    }
   })
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredMemories.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedMemories = filteredMemories
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterCategory, filterTag, filterEmotion, filterPerson, sortBy])
 
   const allTags = Array.from(new Set(memories.flatMap((m) => m.tags)))
   const allEmotions = Array.from(new Set(memories.flatMap((m) => m.emotions || [])))
+  const allPeople = Array.from(new Set(memories.flatMap((m) => m.people || [])))
   const memoriesByCategory = categoryOptions.reduce(
     (acc, category) => {
       acc[category.value] = memories.filter((m) => m.category === category.value).length
@@ -150,30 +212,20 @@ export default function MemoryHub({
   )
 
   return (
-    <div className="min-h-screen bg-warm-cream p-4">
+    <div className="bg-warm-cream p-4" style={{ minHeight: 'calc(100vh - 64px)' }}>
       <div className="max-w-6xl mx-auto pt-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-heading font-semibold text-black tracking-tight">Your Memory Hub</h1>
+            <h1 className="text-4xl font-heading font-semibold text-black tracking-tight">Keepsake</h1>
             <div className="w-20 h-0.5 bg-terracotta mt-2 mb-3"></div>
-            <p className="text-black font-body">
-              {memories.length} {memories.length === 1 ? "memory" : "memories"} woven into your tapestry
+            <p className="text-black font-body">You currently have&nbsp;
+              {memories.length} {memories.length === 1 ? "memory" : "memories"} in your Keepsake.
             </p>
           </div>
           <div className="flex gap-3">
-            {memories.length >= 3 && (
-              <Button
-                onClick={onViewChapters}
-                variant="outline"
-                className="bg-terracotta hover:bg-terracotta-dark text-white border-terracotta"
-              >
-                <BookOpen className="mr-2 h-4 w-4" />
-                {hasChapters ? "Edit Chapters" : "Create Chapters"}
-              </Button>
-            )}
             <Button
               onClick={onAddAnother}
-              className="bg-terracotta hover:bg-terracotta-dark text-white font-medium shadow-lg"
+              className="bg-terracotta hover:bg-terracotta-dark text-white font-medium"
             >
               <Plus className="mr-2 h-4 w-4" />
               Add memory
@@ -187,8 +239,8 @@ export default function MemoryHub({
             <Card className="border-warm-taupe bg-white shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 font-heading text-black">
-                  <Filter className="h-5 w-5" />
-                  Organize
+                  
+                  Organize your memories
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -210,16 +262,6 @@ export default function MemoryHub({
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-black mb-2 block font-body">Filter by Tag</label>
-                  <Input
-                    placeholder="Search tags..."
-                    value={filterTag}
-                    onChange={(e) => setFilterTag(e.target.value)}
-                    className="bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
-                  />
-                </div>
-
-                <div>
                   <label className="text-sm font-medium text-black mb-2 block font-body">Filter by Emotion</label>
                   <Select value={filterEmotion} onValueChange={setFilterEmotion}>
                     <SelectTrigger className="border-terracotta focus:ring-terracotta/20">
@@ -236,28 +278,71 @@ export default function MemoryHub({
                   </Select>
                 </div>
 
-                {(filterCategory !== "all" || filterTag !== "" || filterEmotion !== "all") && (
-                  <div className="pt-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setFilterCategory("all")
-                        setFilterTag("")
-                        setFilterEmotion("all")
-                      }}
-                      className="text-terracotta text-white hover:bg-terracotta-pale hover:text-white text-sm"
-                    >
-                      Clear all filters
-                    </Button>
+                <div>
+                  <label className="text-sm font-medium text-black mb-2 block font-body">Sort by</label>
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="border-terracotta focus:ring-terracotta/20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Most Recent First</SelectItem>
+                      <SelectItem value="oldest">Oldest First</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-black mb-2 block font-body">Show</label>
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                    <SelectTrigger className="border-terracotta focus:ring-terracotta/20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 memories</SelectItem>
+                      <SelectItem value="10">10 memories</SelectItem>
+                      <SelectItem value="20">20 memories</SelectItem>
+                      <SelectItem value="50">50 memories</SelectItem>
+                      <SelectItem value="100">100 memories</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {allPeople.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-black mb-2 block font-body">Filter by Person</label>
+                    <Select value={filterPerson} onValueChange={setFilterPerson}>
+                      <SelectTrigger className="border-terracotta focus:ring-terracotta/20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All People ({memories.length})</SelectItem>
+                        {allPeople.map((person) => {
+                          const count = memories.filter(m => m.people && m.people.includes(person)).length
+                          return (
+                            <SelectItem key={person} value={person}>
+                              {person} ({count})
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
+<div className="pt-2">
+                  <label className="text-sm font-medium text-black mb-2 block font-body">Filter by Tag</label>
+                  <Input
+                    placeholder="Search tags..."
+                    value={filterTag}
+                    onChange={(e) => setFilterTag(e.target.value)}
+                    className="bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
+                  />
+                </div>
                 {allTags.length > 0 && (
                   <div>
                     <label className="text-sm font-medium text-black mb-2 block font-body">Popular Tags</label>
                     <div className="flex flex-wrap gap-1">
-                      {allTags.slice(0, 4).map((tag) => (
+                      {allTags.slice(0, 10).map((tag) => (
                         <Badge
                           key={tag}
                           variant="outline"
@@ -268,6 +353,25 @@ export default function MemoryHub({
                         </Badge>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {(filterCategory !== "all" || filterTag !== "" || filterEmotion !== "all" || filterPerson !== "all") && (
+                  <div className="pt-4 border-t border-warm-taupe/20 mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFilterCategory("all")
+                        setFilterTag("")
+                        setFilterEmotion("all")
+                        setFilterPerson("all")
+                        setSortBy("newest")
+                      }}
+                      className="w-full text-terracotta hover:bg-terracotta-pale hover:text-black border-terracotta/30"
+                    >
+                      Clear all filters
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -287,8 +391,9 @@ export default function MemoryHub({
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6">
-                {filteredMemories.map((memory) => (
+              <>
+                <div className="grid gap-6">
+                  {paginatedMemories.map((memory) => (
                   <Card key={memory.id} className="relative border-warm-taupe bg-white shadow-sm">
                     <CardHeader>
                       <div className="flex justify-between items-start">
@@ -299,12 +404,12 @@ export default function MemoryHub({
                           <div className="flex items-center gap-4 text-sm text-black mb-2 font-body">
                             <div className="flex items-center gap-1">
                               <Calendar className="h-4 w-4" />
-                              {memory.timestamp.toLocaleDateString()}
+                              {memory.memoryDate ? memory.memoryDate.toLocaleDateString() : memory.timestamp.toLocaleDateString()}
                             </div>
-                            {memory.tone && (
-                              <Badge variant="secondary" className="bg-sage/20 text-black border-sage/30">
-                                {memory.tone} tone
-                              </Badge>
+                            {memory.memoryDate && (
+                              <span className="text-xs text-black/60">
+                                Added {memory.timestamp.toLocaleDateString()}
+                              </span>
                             )}
                           </div>
                           {memory.category && (
@@ -313,14 +418,66 @@ export default function MemoryHub({
                             </Badge>
                           )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(memory)}
-                          className="text-black hover:text-white hover:bg-terracotta"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
+                        {editingId === memory.id ? (
+                          <div className="flex gap-2">
+                            <Button 
+                              onClick={handleSave} 
+                              size="sm"
+                              className="bg-terracotta hover:bg-terracotta-dark text-white"
+                            >
+                              <Save className="mr-1 h-3 w-3" />
+                              Save
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleCancel}
+                              className="bg-terracotta/20 hover:bg-terracotta/50 border-terracotta"
+                            >
+                              <X className="mr-1 h-3 w-3" />
+                              Cancel
+                            </Button>
+                            <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteMemory(memory.id)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                >
+                                  <Trash2 className="mr-1 h-3 w-3" />
+                                  Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Memory</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this memory? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={confirmDeleteMemory}
+                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(memory)}
+                            className="text-black hover:text-white hover:bg-terracotta"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </CardHeader>
 
@@ -345,6 +502,23 @@ export default function MemoryHub({
                           </div>
 
                           <div>
+                            <label className="text-sm font-medium text-black mb-2 block font-body">Memory Date (optional)</label>
+                            <Input
+                              type="date"
+                              value={editingMemory.memoryDate ? editingMemory.memoryDate.toISOString().split('T')[0] : ""}
+                              onChange={(e) => {
+                                if (editingMemory) {
+                                  setEditingMemory({
+                                    ...editingMemory,
+                                    memoryDate: e.target.value ? new Date(e.target.value) : undefined,
+                                  })
+                                }
+                              }}
+                              className="bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
+                            />
+                          </div>
+
+                          <div>
                             <label className="text-sm font-medium text-black mb-2 block font-body">Your Response</label>
                             <Textarea
                               value={editingMemory.response}
@@ -358,37 +532,50 @@ export default function MemoryHub({
                             />
                           </div>
 
-                          {editingMemory.aiDraft && (
-                            <div>
-                              <label className="text-sm font-medium text-black mb-2 block font-body">AI Draft</label>
-                              <Textarea
-                                value={editingMemory.aiDraft}
-                                onChange={(e) =>
-                                  setEditingMemory({
-                                    ...editingMemory,
-                                    aiDraft: e.target.value,
-                                  })
-                                }
-                                className="min-h-32 bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
-                              />
-                            </div>
-                          )}
 
-                          {editingMemory.reflection && (
-                            <div>
-                              <label className="text-sm font-medium text-black mb-2 block font-body">Reflection</label>
-                              <Textarea
-                                value={editingMemory.reflection}
-                                onChange={(e) =>
-                                  setEditingMemory({
-                                    ...editingMemory,
-                                    reflection: e.target.value,
-                                  })
-                                }
-                                className="min-h-20 bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
-                              />
+
+                          <div>
+                            <label className="text-sm font-medium text-black mb-2 block font-body">Additional Thoughts</label>
+                            <div className="space-y-3">
+                              {editingMemory.followUpResponses?.map((response, index) => (
+                                <div key={index} className="bg-amber/5 p-3 rounded-lg border border-amber/10">
+                                  {editingMemory.followUpQuestions?.[index] && (
+                                    <p className="text-black font-medium mb-2 text-sm font-body">
+                                      {editingMemory.followUpQuestions[index]}
+                                    </p>
+                                  )}
+                                  <Textarea
+                                    value={response}
+                                    onChange={(e) => {
+                                      const newResponses = [...(editingMemory.followUpResponses || [])]
+                                      newResponses[index] = e.target.value
+                                      setEditingMemory({
+                                        ...editingMemory,
+                                        followUpResponses: newResponses,
+                                      })
+                                    }}
+                                    className="min-h-16 bg-white border-amber/20 focus:border-terracotta focus:ring-terracotta/20 text-sm"
+                                  />
+                                </div>
+                              ))}
+                              <div className="bg-amber/10 p-3 rounded-lg border border-amber/20">
+                                <p className="text-black font-medium mb-2 text-sm font-body">
+                                  Additional reflections:
+                                </p>
+                                <Textarea
+                                  value={editingMemory.additionalThoughts || ""}
+                                  onChange={(e) =>
+                                    setEditingMemory({
+                                      ...editingMemory,
+                                      additionalThoughts: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Any other details, feelings, or thoughts about this memory..."
+                                  className="min-h-20 bg-white border-amber/20 focus:border-terracotta focus:ring-terracotta/20"
+                                />
+                              </div>
                             </div>
-                          )}
+                          </div>
 
                           <div>
                             <label className="text-sm font-medium text-black mb-2 block font-body">Emotions</label>
@@ -411,8 +598,8 @@ export default function MemoryHub({
                                   }}
                                   className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-body transition-all ${
                                     editingMemory?.emotions?.includes(emotion.value)
-                                      ? 'bg-amber-100 text-black border-2 border-terracotta shadow-md font-medium'
-                                      : 'bg-gray-100 hover:bg-gray-200 text-black border border-gray-300'
+                                      ? 'bg-gray-100 text-black border-2 border-terracotta opacity-100'
+                                      : 'bg-gray-100 hover:bg-gray-200 text-black border border-gray-300 opacity-60 hover:opacity-80'
                                   }`}
                                 >
                                   <span className="text-sm">{emotion.emoji}</span>
@@ -423,11 +610,56 @@ export default function MemoryHub({
                           </div>
 
                           <div>
+                            <label className="text-sm font-medium text-black mb-2 block font-body">People</label>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {editingMemory?.people && editingMemory.people.map((person, index) => (
+                                <Badge
+                                  key={index}
+                                  variant="outline"
+                                  className="gap-1 border-warm-taupe text-black hover:bg-terracotta-pale"
+                                >
+                                  👤 {person}
+                                  <button 
+                                    onClick={() => {
+                                      if (editingMemory) {
+                                        setEditingMemory({
+                                          ...editingMemory,
+                                          people: editingMemory.people?.filter(p => p !== person) || [],
+                                        })
+                                      }
+                                    }} 
+                                    className="ml-1 hover:text-red-500"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Add a person..."
+                                value={newPerson}
+                                onChange={(e) => setNewPerson(e.target.value)}
+                                onKeyPress={(e) => e.key === "Enter" && addPerson(memory.id)}
+                                className="flex-1 bg-warm-paper border-warm-taupe focus:border-terracotta focus:ring-terracotta/20"
+                              />
+                              <Button
+                                variant="outline"
+                                onClick={() => addPerson(memory.id)}
+                                disabled={!newPerson.trim()}
+                                className="bg-terracotta hover:bg-terracotta-dark text-white border-terracotta"
+                              >
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div>
                             <label className="text-sm font-medium text-black mb-2 block font-body">Tags</label>
                             <div className="flex flex-wrap gap-2 mb-2">
                               {editingMemory.tags.map((tag) => (
                                 <Badge key={tag} variant="outline" className="gap-1 border-warm-taupe text-black hover:bg-terracotta-pale">
-                                  <Tag className="h-3 w-3" />
+                                  <span className="mr-1">🏷️</span>
                                   {tag}
                                   <button onClick={() => removeTag(memory.id, tag)} className="ml-1 hover:text-red-500">
                                     <X className="h-3 w-3" />
@@ -454,106 +686,147 @@ export default function MemoryHub({
                             </div>
                           </div>
 
-                          <div className="flex gap-2">
-                            <Button onClick={handleSave} className="bg-terracotta hover:bg-terracotta-dark text-white">
-                              <Save className="mr-2 h-4 w-4" />
-                              Save
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={handleCancel}
-                              className="bg-terracotta hover:bg-terracotta-dark text-white border-terracotta"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
+
                         </div>
                       ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
+                          {/* Condensed Response Preview */}
                           <div>
-                            <h4 className="font-medium text-black mb-2 font-body">Your Response</h4>
-                            <p className="text-black bg-warm-paper p-3 rounded-lg font-body leading-relaxed">
-                              {memory.response}
+                            <p className="text-black font-body leading-relaxed line-clamp-3">
+                              {memory.response.length > 150 
+                                ? `${memory.response.substring(0, 150)}...` 
+                                : memory.response
+                              }
                             </p>
                           </div>
 
-                          {memory.aiDraft && (
-                            <div>
-                              <h4 className="font-medium text-black mb-2 font-body">Memory Story</h4>
-                              <div className="bg-terracotta/5 p-4 rounded-lg border border-terracotta/20">
-                                <p className="whitespace-pre-wrap text-black font-body leading-relaxed">
-                                  {memory.aiDraft}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {memory.reflection && (
-                            <div>
-                              <h4 className="font-medium text-black mb-2 font-body">Reflection</h4>
-                              <p className="text-black bg-sage/10 p-3 rounded-lg border border-sage/20 font-body leading-relaxed">
-                                {memory.reflection}
-                              </p>
-                            </div>
-                          )}
-
-                          {memory.emotions && memory.emotions.length > 0 && (
-                            <div className="mb-3">
-                              <h5 className="text-xs font-medium text-black mb-2 font-body">Emotions</h5>
-                              <div className="flex flex-wrap gap-1">
-                                {memory.emotions.map((emotion) => {
+                          {/* Condensed Metadata */}
+                          <div className="flex flex-wrap gap-2 items-center">
+                            {/* Emotions Preview */}
+                            {memory.emotions && memory.emotions.length > 0 && (
+                              <div className="flex items-center gap-1">
+                                {memory.emotions.slice(0, 3).map((emotion) => {
                                   const emotionOption = emotionOptions.find(opt => opt.value === emotion)
                                   return (
-                                    <span 
+                                    <Badge 
                                       key={emotion} 
-                                      className="inline-flex items-center gap-1 bg-warm-paper px-2 py-1 rounded-full text-xs text-black"
+                                      variant="secondary" 
+                                      className="bg-warm-paper text-black text-xs"
                                     >
-                                      <span>{emotionOption?.emoji}</span>
-                                      <span>{emotionOption?.label}</span>
-                                    </span>
+                                      <span className="mr-1">{emotionOption?.emoji}</span>
+                                      {emotionOption?.label}
+                                    </Badge>
                                   )
                                 })}
+                                {memory.emotions.length > 3 && (
+                                  <span className="text-xs text-gray-600">+{memory.emotions.length - 3} more</span>
+                                )}
                               </div>
-                            </div>
-                          )}
+                            )}
 
-                          {memory.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {memory.tags.map((tag) => (
-                                <Badge key={tag} variant="secondary" className="bg-warm-paper text-black">
-                                  <Tag className="mr-1 h-3 w-3" />
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+                            {/* People Preview */}
+                            {memory.people && memory.people.length > 0 && (
+                              <div className="flex items-center gap-1">
+                                {memory.people.slice(0, 2).map((person) => (
+                                  <Badge 
+                                    key={person} 
+                                    variant="secondary" 
+                                    className="bg-warm-paper text-black text-xs"
+                                  >
+                                    <span className="mr-1">👤</span>
+                                    {person}
+                                  </Badge>
+                                ))}
+                                {memory.people.length > 2 && (
+                                  <span className="text-xs text-gray-600">+{memory.people.length - 2} more</span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Tags Preview */}
+                            {memory.tags.length > 0 && (
+                              <div className="flex items-center gap-1">
+                                {memory.tags.slice(0, 2).map((tag) => (
+                                  <Badge key={tag} variant="secondary" className="bg-warm-paper text-black text-xs">
+                                    <span className="mr-1">🏷️</span>
+                                    {tag}
+                                  </Badge>
+                                ))}
+                                {memory.tags.length > 2 && (
+                                  <span className="text-xs text-gray-600">+{memory.tags.length - 2} more</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            )}
-          </div>
-        </div>
 
-        {memories.length >= 3 && (
-          <div className="text-center py-12 bg-white rounded-lg border border-terracotta/20 shadow-sm">
-            <BookOpen className="h-12 w-12 text-terracotta-dark mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-black mb-2 font-heading">Ready to weave your story?</h3>
-            <p className="text-black mb-6 font-body">
-              You have {memories.length} memories. Let's organize them into chapters and create your memoir.
-            </p>
-            <Button
-              onClick={onViewChapters}
-              size="lg"
-              className="bg-terracotta hover:bg-terracotta-dark text-white font-medium shadow-lg"
-            >
-              <BookOpen className="mr-2 h-5 w-5" />
-              {hasChapters ? "Continue Building Chapters" : "Start Creating Chapters"}
-            </Button>
-          </div>
-        )}
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center mt-8 pt-6 border-t border-warm-taupe/20">
+                  <div className="text-sm text-black font-body">
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredMemories.length)} of {filteredMemories.length} memories
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="border-terracotta text-terracotta hover:bg-terracotta-pale disabled:opacity-50"
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum
+                        if (totalPages <= 5) {
+                          pageNum = i + 1
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i
+                        } else {
+                          pageNum = currentPage - 2 + i
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={
+                              currentPage === pageNum
+                                ? "bg-terracotta hover:bg-terracotta-dark text-white"
+                                : "border-terracotta text-terracotta hover:bg-terracotta-pale"
+                            }
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="border-terracotta text-terracotta hover:bg-terracotta-pale disabled:opacity-50"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
       </div>
     </div>
   )
