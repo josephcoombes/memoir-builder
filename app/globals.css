@@ -1,0 +1,209 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Font variables */
+    --font-heading: "Playfair Display", "Times New Roman", serif;
+    --font-body: "Inter", system-ui, -apple-system, sans-serif;
+
+    /* Modern Nostalgia Color Palette - High Contrast */
+    --background: 252 251 247; /* Warm white #FCFBF7 */
+    --foreground: 0 0 0; /* Pure black #000000 */
+    --card: 252 251 247;
+    --card-foreground: 0 0 0;
+    --popover: 252 251 247;
+    --popover-foreground: 0 0 0;
+    --primary: 120 53 15; /* Deep burnt sienna #78350F */
+    --primary-foreground: 255 255 255; /* White text on terracotta */
+    --secondary: 0 0 0; /* Black for secondary text */
+    --secondary-foreground: 255 255 255;
+    --muted: 245 245 244; /* Soft stone #F5F5F4 */
+    --muted-foreground: 0 0 0; /* Black text */
+    --accent: 146 64 14; /* Muted amber #92400E */
+    --accent-foreground: 255 255 255; /* White text */
+    --destructive: 153 27 27; /* Deep red #991B1B */
+    --destructive-foreground: 255 255 255;
+    --border: 120 113 108; /* Darker warm border #78716C */
+    --input: 250 250 249; /* Light warm cream #FAFAF9 */
+    --ring: 120 53 15; /* Deep burnt sienna for focus rings */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 41 37 36;
+    --foreground: 252 251 247;
+    --card: 41 37 36;
+    --card-foreground: 252 251 247;
+    --popover: 41 37 36;
+    --popover-foreground: 252 251 247;
+    --primary: 146 64 14;
+    --primary-foreground: 41 37 36;
+    --secondary: 87 83 74;
+    --secondary-foreground: 252 251 247;
+    --muted: 68 64 60;
+    --muted-foreground: 214 211 209;
+    --accent: 146 64 14;
+    --accent-foreground: 41 37 36;
+    --destructive: 220 38 38;
+    --destructive-foreground: 252 251 247;
+    --border: 68 64 60;
+    --input: 68 64 60;
+    --ring: 146 64 14;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    @apply text-black;
+  }
+
+  /* All text should be black */
+  p,
+  span,
+  div,
+  label,
+  li,
+  td,
+  th {
+    @apply text-black;
+  }
+
+  /* Form field styling with dark borders */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    @apply bg-input border-stone-400 focus:border-primary focus:ring-primary/20 text-black;
+  }
+
+  /* Button overrides - all buttons should be terracotta with white text */
+  .btn-primary,
+  button:not(.btn-outline):not(.btn-ghost) {
+    @apply bg-terracotta text-white hover:bg-terracotta-dark;
+  }
+}
+
+@layer utilities {
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  /* Force black text utilities */
+  .text-primary {
+    @apply text-black !important;
+  }
+  .text-secondary {
+    @apply text-black !important;
+  }
+  .text-muted {
+    @apply text-black !important;
+  }
+
+  /* Color utilities with black text */
+  .text-warm-primary {
+    color: rgb(0 0 0) !important; /* Pure black */
+  }
+  .text-warm-secondary {
+    color: rgb(0 0 0) !important; /* Pure black */
+  }
+  .text-warm-tertiary {
+    color: rgb(0 0 0) !important; /* Pure black */
+  }
+
+  .bg-warm-cream {
+    background-color: rgb(252 251 247); /* stone-50 */
+  }
+  .bg-warm-paper {
+    background-color: rgb(250 250 249); /* stone-25 */
+  }
+  .bg-warm-input {
+    background-color: rgb(250 250 249); /* Light warm cream for inputs */
+  }
+
+  .bg-terracotta {
+    background-color: rgb(146 64 14) !important; /* amber-800 */
+  }
+  .bg-terracotta-dark {
+    background-color: rgb(120 53 15) !important; /* amber-900 */
+  }
+  .bg-terracotta-light {
+    background-color: rgb(217 119 6) !important; /* amber-600 */
+  }
+
+  .text-terracotta {
+    color: rgb(146 64 14) !important;
+  }
+  .text-terracotta-dark {
+    color: rgb(120 53 15) !important;
+  }
+
+  .bg-sage {
+    background-color: rgb(87 83 74); /* stone-600 */
+  }
+  .bg-sage-light {
+    background-color: rgb(168 162 158); /* stone-400 */
+  }
+
+  .border-warm-dark {
+    border-color: rgb(120 113 108); /* stone-500 - darker border */
+  }
+  .border-warm-taupe {
+    border-color: rgb(168 162 158); /* stone-400 - medium border */
+  }
+  .border-warm-light {
+    border-color: rgb(214 211 209); /* stone-300 - light border */
+  }
+
+  /* Button utilities */
+  .btn-terracotta {
+    @apply bg-terracotta hover:bg-terracotta-dark text-white font-medium;
+  }
+
+  /* Muted category colors with black text */
+  .category-childhood {
+    @apply bg-amber-50 text-black border-amber-200;
+  }
+  .category-family {
+    @apply bg-stone-50 text-black border-stone-200;
+  }
+  .category-love {
+    @apply bg-rose-50 text-black border-rose-200;
+  }
+  .category-growth {
+    @apply bg-slate-50 text-black border-slate-200;
+  }
+  .category-challenges {
+    @apply bg-orange-50 text-black border-orange-200;
+  }
+  .category-achievements {
+    @apply bg-amber-50 text-black border-amber-200;
+  }
+  .category-loss {
+    @apply bg-neutral-50 text-black border-neutral-200;
+  }
+  .category-joy {
+    @apply bg-emerald-50 text-black border-emerald-200;
+  }
+  .category-lessons {
+    @apply bg-indigo-50 text-black border-indigo-200;
+  }
+}
