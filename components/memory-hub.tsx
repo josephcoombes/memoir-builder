@@ -186,7 +186,7 @@ export default function MemoryHub({
   const totalPages = Math.ceil(filteredMemories.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedMemories = filteredMemories
+  const paginatedMemories = filteredMemories.slice(startIndex, endIndex)
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -221,15 +221,6 @@ export default function MemoryHub({
             <p className="text-black font-body">You currently have&nbsp;
               {memories.length} {memories.length === 1 ? "memory" : "memories"} in your Keepsake.
             </p>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              onClick={onAddAnother}
-              className="bg-terracotta hover:bg-terracotta-dark text-white font-medium"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add memory
-            </Button>
           </div>
         </div>
 
@@ -291,21 +282,7 @@ export default function MemoryHub({
                   </Select>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium text-black mb-2 block font-body">Show</label>
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-                    <SelectTrigger className="border-terracotta focus:ring-terracotta/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5 memories</SelectItem>
-                      <SelectItem value="10">10 memories</SelectItem>
-                      <SelectItem value="20">20 memories</SelectItem>
-                      <SelectItem value="50">50 memories</SelectItem>
-                      <SelectItem value="100">100 memories</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+
 
                 {allPeople.length > 0 && (
                   <div>
@@ -769,57 +746,74 @@ export default function MemoryHub({
               {totalPages > 1 && (
                 <div className="flex justify-between items-center mt-8 pt-6 border-t border-warm-taupe/20">
                   <div className="text-sm text-black font-body">
-                    Showing {startIndex + 1}-{Math.min(endIndex, filteredMemories.length)} of {filteredMemories.length} memories
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredMemories.length)} of {filteredMemories.length} memories.
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="border-terracotta text-terracotta hover:bg-terracotta-pale disabled:opacity-50"
-                    >
-                      Previous
-                    </Button>
-                    <div className="flex gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum
-                        if (totalPages <= 5) {
-                          pageNum = i + 1
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i
-                        } else {
-                          pageNum = currentPage - 2 + i
-                        }
-                        
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={currentPage === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={
-                              currentPage === pageNum
-                                ? "bg-terracotta hover:bg-terracotta-dark text-white"
-                                : "border-terracotta text-terracotta hover:bg-terracotta-pale"
-                            }
-                          >
-                            {pageNum}
-                          </Button>
-                        )
-                      })}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-sm text-black">
+                      <span>Show:</span>
+                      <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                        <SelectTrigger className="w-20 h-8 border-terracotta focus:ring-terracotta/20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="border-terracotta text-terracotta hover:bg-terracotta-pale disabled:opacity-50"
-                    >
-                      Next
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="border-terracotta text-terracotta hover:bg-terracotta/10 hover:text-terracotta-dark disabled:opacity-50"
+                      >
+                        Previous
+                      </Button>
+                      <div className="flex gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum
+                          if (totalPages <= 5) {
+                            pageNum = i + 1
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i
+                          } else {
+                            pageNum = currentPage - 2 + i
+                          }
+                          
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={currentPage === pageNum ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={
+                                currentPage === pageNum
+                                  ? "bg-terracotta hover:bg-terracotta-dark text-white"
+                                  : "border-terracotta text-terracotta hover:bg-terracotta/10 hover:text-terracotta-dark"
+                              }
+                            >
+                              {pageNum}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="border-terracotta text-terracotta hover:bg-terracotta/10 hover:text-terracotta-dark disabled:opacity-50"
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -827,7 +821,7 @@ export default function MemoryHub({
           )}
         </div>
       </div>
-      </div>
     </div>
+  </div>
   )
 }
