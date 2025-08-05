@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowRight, RefreshCw, ArrowLeft, Heart, Edit3 } from "lucide-react"
 import type { Memory } from "@/app/page"
 
-import TapestryLogo from "@/components/tapestry-logo"
+
 
 interface MemoryPromptProps {
   onMemoryAdded: (memory: Memory) => void
@@ -455,19 +455,10 @@ export default function MemoryPrompt({ onMemoryAdded, onViewHub, memoriesCount, 
           <div>
             <h1 className="text-3xl font-heading font-semibold text-black">Memory Excavation</h1>
             {memoriesCount > 0 && (
-              <p className="text-black font-body">{memoriesCount} memories in your Keepsake.</p>
+              <p className="text-black font-body">You currently have {memoriesCount} memories in your Keepsake.</p>
             )}
           </div>
-          {memoriesCount > 0 && (
-            <Button
-              variant="outline"
-              onClick={onViewHub}
-              className="bg-terracotta hover:bg-terracotta-dark hover:text-white text-white border-terracotta"
-            >
-              View Keepsake
-            </Button>
-          )}
-        </div>
+          </div>
 
         {memorySaved ? (
           <Card className="mb-6 border-warm-taupe bg-warm-paper shadow-sm">
@@ -545,7 +536,7 @@ export default function MemoryPrompt({ onMemoryAdded, onViewHub, memoriesCount, 
 
             <Card className="border-warm-taupe bg-white shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg font-heading text-black">Or create your own prompt:</CardTitle>
+                <CardTitle className="text-xl font-heading text-black">Or create your own prompt:</CardTitle>
                 <p className="text-black font-body">Have something specific you want to remember?</p>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -914,12 +905,7 @@ export default function MemoryPrompt({ onMemoryAdded, onViewHub, memoriesCount, 
           </Card>
         )}
 
-            {memoriesCount > 0 && (
-              <div className="text-center py-8">
-                <p className="text-black mb-4 font-body">Keepsake turns everyday moments into lasting memories.</p>
-                <TapestryLogo size={32} className="mx-auto opacity-60" />
-              </div>
-            )}
+
           </>
         )}
       </div>
